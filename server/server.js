@@ -3,6 +3,8 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const { Server } = require('socket.io');
 const http = require('http');
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
 require('dotenv').config();
 
 const app = express();
@@ -11,8 +13,20 @@ const io = new Server(server, {
   cors: { origin: '*' }
 });
 
+// Security middlewares
+app.use(helmet({
+  contentSecurityPolicy: false // Disabled for APIs to prevent interfering with Dev environments
+}));
+app.use(mongoSanitize());
+
 app.use(cors());
 app.use(express.json());
+
+// Expose Socket.io instance on request object for routers to access
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
 
 const authRoutes = require('./routes/auth');
 const progressRoutes = require('./routes/progress');
@@ -30,16 +44,54 @@ app.use('/api/enrollments', enrollmentsRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/admin', adminRoutes);
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/technotronia')
-  .then(() => console.log('✅ MongoDB connected successfully'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// MongoDB connection configuration (Secure, resilient options)
+const dbOptions = {
+  maxPoolSize: 10,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+};
 
-// Socket.io for Realtime
+const primaryURI = process.env.MONGODB_URI;
+const localFallbackURI = 'mongodb://127.0.0.1:27017/technotronia';
+
+if (primaryURI) {
+  mongoose.connect(primaryURI, dbOptions)
+    .then(() => console.log('✅ MongoDB connected securely to primary Atlas database'))
+    .catch(err => {
+      console.warn('⚠️ MongoDB Atlas primary connection failed:', err.message);
+      console.log('🔄 Seamlesly falling back to secure local MongoDB connection...');
+      
+      mongoose.connect(localFallbackURI, dbOptions)
+        .then(() => console.log('✅ MongoDB connected securely to local fallback database'))
+        .catch(fallbackErr => {
+          console.error('❌ Local MongoDB fallback failed as well:', fallbackErr.message);
+          if (process.env.NODE_ENV === 'production') {
+            process.exit(1);
+          }
+        });
+    });
+} else {
+  mongoose.connect(localFallbackURI, dbOptions)
+    .then(() => console.log('✅ MongoDB connected securely to local database'))
+    .catch(err => {
+      console.error('❌ Local MongoDB connection error:', err.message);
+      if (process.env.NODE_ENV === 'production') {
+        process.exit(1);
+      }
+    });
+}
+
+// Socket.io for Realtime Syncs
 io.on('connection', (socket) => {
-  console.log('Client connected for real-time updates');
+  console.log(`🔌 Client connected for real-time updates: ${socket.id}`);
+  
+  socket.on('join_global', () => {
+    socket.join('global_room');
+    console.log(`👤 Client joined real-time sync (global_room): ${socket.id}`);
+  });
+
   socket.on('disconnect', () => {
-    console.log('Client disconnected');
+    console.log(`🔌 Client disconnected: ${socket.id}`);
   });
 });
 

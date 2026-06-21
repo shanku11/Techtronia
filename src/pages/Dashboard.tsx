@@ -4,9 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Trophy, Star, BookOpen, Code, Zap, Crown, Medal, Award, LogOut, Loader2 } from "lucide-react";
+import { Brain, Trophy, Star, BookOpen, Code, Zap, Crown, Medal, Award, LogOut, Loader2, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchWithoutAuth, fetchWithAuth } from "@/lib/api";
+import { io } from "socket.io-client";
+import { toast } from "sonner";
 
 interface LeaderboardEntry {
   id: string;
@@ -28,6 +30,14 @@ interface CourseEnrollment {
   } | null;
 }
 
+interface LiveActivity {
+  id: string;
+  username: string;
+  type: 'xp' | 'progress';
+  message: string;
+  timestamp: Date;
+}
+
 const Dashboard = () => {
   const { user, profile, signOut, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -35,25 +45,77 @@ const Dashboard = () => {
   const [enrollments, setEnrollments] = useState<CourseEnrollment[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [liveActivities, setLiveActivities] = useState<LiveActivity[]>([]);
+  const [isLeaderboardRefreshing, setIsLeaderboardRefreshing] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
   };
 
-  useEffect(() => {
-    const fetchLeaderboard = async () => {
-      try {
-        const data = await fetchWithoutAuth('/leaderboard');
-        setLeaderboard(data);
-        if (user) {
-          const userEntry = data.find((entry: LeaderboardEntry) => entry.id === user.id);
-          if (userEntry) setUserRank(userEntry.global_rank);
-        }
-      } catch (error) {
-        console.error("Failed to fetch leaderboard", error);
+  const fetchLeaderboard = async (silent = false) => {
+    if (!silent) setIsLeaderboardRefreshing(true);
+    try {
+      const data = await fetchWithoutAuth('/leaderboard');
+      setLeaderboard(data);
+      if (user) {
+        const userEntry = data.find((entry: LeaderboardEntry) => entry.id === user.id);
+        if (userEntry) setUserRank(userEntry.global_rank);
       }
+    } catch (error) {
+      console.error("Failed to fetch leaderboard", error);
+    } finally {
+      if (!silent) setIsLeaderboardRefreshing(false);
+    }
+  };
+
+  // Real-time synchronization via Socket.io
+  useEffect(() => {
+    if (!user) return;
+
+    // Connect to Socket.io server on the backend port (5001)
+    const socket = io("http://localhost:5001");
+
+    socket.on("connect", () => {
+      console.log("🔌 Connected to real-time server!");
+      socket.emit("join_global");
+    });
+
+    socket.on("leaderboard_update", () => {
+      console.log("⚡ Leaderboard update event received. Refetching...");
+      fetchLeaderboard(true);
+    });
+
+    socket.on("realtime_activity", (data) => {
+      console.log("🔔 Real-time activity received:", data);
+      
+      setLiveActivities(prev => [
+        {
+          id: Math.random().toString(),
+          username: data.username,
+          type: data.type,
+          message: data.message,
+          timestamp: new Date()
+        },
+        ...prev
+      ].slice(0, 5));
+
+      // Show beautiful Sonner toast
+      toast(`${data.username} ${data.message}`, {
+        description: data.type === 'xp' ? '⚡ High-activity learner' : '🎓 Concept mastered',
+        icon: data.type === 'xp' ? '⚡' : '🎉',
+        duration: 4000,
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+      console.log("🔌 Disconnected from real-time server");
     };
+  }, [user]);
+
+  // Initial fetch of leaderboard
+  useEffect(() => {
     fetchLeaderboard();
   }, [user]);
 
@@ -288,6 +350,41 @@ const Dashboard = () => {
                 )}
               </CardContent>
             </Card>
+
+            {/* Live Learning Feed */}
+            <Card className="mt-6 border-primary/20 bg-gradient-to-br from-background to-muted/20 tech-glow">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                  Live Activity Feed
+                </CardTitle>
+                <CardDescription className="text-xs">Real-time sync across learners</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {liveActivities.length === 0 ? (
+                  <p className="text-center text-xs text-muted-foreground py-4">Waiting for live activities... 🔌</p>
+                ) : (
+                  liveActivities.map((activity) => (
+                    <div key={activity.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 hover:bg-muted/50 border border-border/40 transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-sm font-semibold">
+                        {activity.type === 'xp' ? '⚡' : '🎓'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold truncate">{activity.username}</p>
+                        <p className="text-[10px] text-muted-foreground leading-tight">{activity.message}</p>
+                      </div>
+                      <span className="text-[9px] text-muted-foreground whitespace-nowrap">
+                        {new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
             <Card className="mt-6">
               <CardHeader>
                 <CardTitle className="text-lg">Recent Achievements</CardTitle>

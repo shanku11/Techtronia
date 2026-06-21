@@ -10,10 +10,46 @@ import {
 } from "lucide-react";
 import { fetchWithAuth } from "@/lib/api";
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
+const parseBold = (text: string) => {
+  const parts = text.split('**');
+  return parts.map((part, i) => {
+    if (i % 2 === 1) {
+      return <strong key={i} className="font-semibold text-foreground dark:text-white">{part}</strong>;
+    }
+    return part;
+  });
+};
+
+const renderMarkdown = (text: string) => {
+  return text.split('\n').map((line, i) => {
+    let cleanLine = line.trim();
+    if (!cleanLine) return <div key={i} className="h-2" />;
+    
+    // Headers
+    if (cleanLine.startsWith('###')) {
+      return <h4 key={i} className="text-xs font-bold text-primary mt-2.5 mb-1">{cleanLine.replace('###', '').trim()}</h4>;
+    }
+    if (cleanLine.startsWith('##')) {
+      return <h3 key={i} className="text-sm font-bold text-primary mt-3.5 mb-1.5">{cleanLine.replace('##', '').trim()}</h3>;
+    }
+    if (cleanLine.startsWith('#')) {
+      return <h2 key={i} className="text-base font-bold text-primary mt-4 mb-2">{cleanLine.replace('#', '').trim()}</h2>;
+    }
+    
+    // Bullet Lists
+    if (cleanLine.startsWith('-') || cleanLine.startsWith('*')) {
+      const content = cleanLine.substring(1).trim();
+      return (
+        <li key={i} className="ml-3 list-disc text-xs text-muted-foreground my-0.5 pl-1">
+          {parseBold(content)}
+        </li>
+      );
+    }
+    
+    // Default Paragraph
+    return <p key={i} className="text-xs leading-relaxed my-1">{parseBold(cleanLine)}</p>;
+  });
+};
 
 const AIMentorAssistant = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -142,12 +178,12 @@ const AIMentorAssistant = () => {
                   key={index}
                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[80%] p-3 rounded-lg text-sm ${
+                  <div className={`max-w-[80%] p-3 rounded-lg text-xs leading-relaxed ${
                     message.role === 'user' 
                       ? 'bg-primary text-primary-foreground' 
-                      : 'bg-muted'
+                      : 'bg-muted border border-border/50'
                   }`}>
-                    {message.content}
+                    {message.role === 'user' ? message.content : <div className="space-y-1">{renderMarkdown(message.content)}</div>}
                   </div>
                 </div>
               ))}

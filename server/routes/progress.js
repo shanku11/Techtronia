@@ -35,6 +35,23 @@ router.post('/sync', authMiddleware, async (req, res) => {
       await progress.save();
     }
     
+    // Broadcast progress sync to trigger leaderboard and real-time updates
+    if (req.io) {
+      req.io.emit('leaderboard_update');
+      
+      // Get user details to send real-time notification
+      const user = await User.findById(req.user.userId).select('fullName username');
+      if (user && completed) {
+        const stageName = stage.charAt(0).toUpperCase() + stage.slice(1);
+        const topicName = topicSlug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        req.io.to('global_room').emit('realtime_activity', {
+          username: user.fullName || user.username || 'A learner',
+          type: 'progress',
+          message: `completed ${topicName} - ${stageName}! 🎉`
+        });
+      }
+    }
+    
     res.json({ message: 'Progress synced', progress });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -50,6 +67,17 @@ router.post('/xp', authMiddleware, async (req, res) => {
     
     user.xpPoints += points;
     await user.save();
+    
+    // Broadcast XP and leaderboard update in real-time
+    if (req.io) {
+      req.io.emit('leaderboard_update');
+      
+      req.io.to('global_room').emit('realtime_activity', {
+        username: user.fullName || user.username || 'A learner',
+        type: 'xp',
+        message: `earned +${points} XP points! ⚡`
+      });
+    }
     
     res.json({ message: 'XP updated', xpPoints: user.xpPoints });
   } catch (err) {
