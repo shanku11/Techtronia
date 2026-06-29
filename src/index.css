@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Technotronia Design System - AI-powered educational platform */
+/* Techtronia Design System - AI-powered educational platform */
 
 @layer base {
   :root {
@@ -27,7 +27,7 @@
     --ring: 265 85% 60%;
     --radius: 0.75rem;
     
-    /* Technotronia specific colors */
+    /* Techtronia specific colors */
     --tech-gradient-start: 265 85% 60%;
     --tech-gradient-end: 290 85% 65%;
     --success: 142 76% 36%;

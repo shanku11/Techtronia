@@ -3,6 +3,9 @@ const router = express.Router();
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+
+const googleClient = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey123';
 
@@ -49,6 +52,47 @@ router.post('/signin', async (req, res) => {
     res.json({ user: { id: user.id, email: user.email, fullName: user.fullName, username: user.username, xpPoints: user.xpPoints, avatarUrl: user.avatarUrl }, session: { token: sessionToken } });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Google Login
+router.post('/google', async (req, res) => {
+  try {
+    const { token } = req.body;
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID',
+    });
+    
+    const payload = ticket.getPayload();
+    const { sub, email, name, picture } = payload;
+    
+    let user = await User.findOne({ email });
+    
+    if (!user) {
+      user = new User({
+        email,
+        fullName: name,
+        googleId: sub,
+        avatarUrl: picture,
+      });
+      await user.save();
+    } else if (!user.googleId) {
+      user.googleId = sub;
+      if (!user.avatarUrl) user.avatarUrl = picture;
+      await user.save();
+    }
+
+    const jwtPayload = { userId: user.id };
+    const sessionToken = jwt.sign(jwtPayload, JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({ 
+      user: { id: user.id, email: user.email, fullName: user.fullName, username: user.username, xpPoints: user.xpPoints, avatarUrl: user.avatarUrl }, 
+      session: { token: sessionToken } 
+    });
+  } catch (err) {
+    console.error('Google Auth Error:', err);
+    res.status(401).json({ message: 'Invalid Google Token', error: err.message });
   }
 });
 

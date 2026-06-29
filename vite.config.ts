@@ -8,6 +8,17 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups"
+    },
+    proxy: {
+      '/api/n8n': {
+        target: 'https://shanku.app.n8n.cloud',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/api\/n8n/, '')
+      }
+    }
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {

@@ -28,7 +28,7 @@ interface AuthContextType {
   isLoading: boolean;
   signUp: (email: string, password: string, fullName: string, username?: string) => Promise<{ error: unknown }>;
   signIn: (email: string, password: string) => Promise<{ error: unknown }>;
-  signInWithGoogle: () => Promise<{ error: unknown }>;
+  signInWithGoogle: (credential: string) => Promise<{ error: unknown }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -87,13 +87,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUp = async (email: string, password: string, fullName: string, username?: string) => {
     try {
-      const data = await fetchWithoutAuth('/auth/signup', {
+      await fetchWithoutAuth('/auth/signup', {
         method: 'POST',
         body: JSON.stringify({ email, password, fullName, username }),
       });
-      localStorage.setItem('token', data.session.token);
-      setSession({ access_token: data.session.token });
-      await fetchProfile();
+      // Do not auto-login after registration
       return { error: null };
     } catch (error: any) {
       return { error: { message: error.message } };
@@ -115,8 +113,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signInWithGoogle = async () => {
-    return { error: { message: 'Google OAuth not yet implemented with MongoDB backend.' } };
+  const signInWithGoogle = async (credential: string) => {
+    try {
+      const data = await fetchWithoutAuth('/auth/google', {
+        method: 'POST',
+        body: JSON.stringify({ token: credential }),
+      });
+      localStorage.setItem('token', data.session.token);
+      setSession({ access_token: data.session.token });
+      await fetchProfile();
+      return { error: null };
+    } catch (error: any) {
+      return { error: { message: error.message } };
+    }
   };
 
   const signOut = async () => {

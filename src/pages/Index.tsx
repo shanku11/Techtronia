@@ -22,7 +22,7 @@ const Index = () => {
             <div className="p-2 rounded-lg tech-gradient">
               <Brain className="h-6 w-6 text-white" />
             </div>
-            <span className="text-xl font-bold">Technotronia</span>
+            <span className="text-xl font-bold">Techtronia</span>
           </Link>
 
           <nav className="flex items-center gap-4">
@@ -71,7 +71,7 @@ const Index = () => {
               <h1 className="text-5xl md:text-6xl font-bold">
                 Welcome to{" "}
                 <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  Technotronia
+                  Techtronia
                 </span>
               </h1>
               <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto">
@@ -219,7 +219,7 @@ const Index = () => {
           </h2>
           <p className="text-xl text-muted-foreground mb-8">
             Join thousands of students already mastering computer science 
-            with Technotronia's innovative approach.
+            with Techtronia's innovative approach.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">

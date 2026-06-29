@@ -1,0 +1,138 @@
+{
+  "name": "Techtronia Ultimate Mentor (Gemini)",
+  "nodes": [
+    {
+      "parameters": {
+        "modelName": "models/gemini-1.5-flash"
+      },
+      "id": "gemini-model",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [ 500, 600 ]
+    },
+    {
+      "parameters": {
+        "sessionId": "={{ $json.body.userId || 'default' }}"
+      },
+      "id": "memory",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.1,
+      "position": [ 700, 600 ]
+    },
+    
+    {
+      "parameters": { "httpMethod": "POST", "path": "mentor", "responseMode": "lastNode" },
+      "id": "webhook-main",
+      "name": "Main Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [ 200, 0 ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.message }}",
+        "options": {
+          "systemMessage": "You are Techtronia AI Mentor. Handle Doubt Clarification and Learning Roadmaps. NEVER give full code."
+        }
+      },
+      "id": "agent-main",
+      "name": "General Mentor",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.1,
+      "position": [ 500, 0 ]
+    },
+
+    {
+      "parameters": { "httpMethod": "POST", "path": "code-mentor", "responseMode": "lastNode" },
+      "id": "webhook-code",
+      "name": "IDE Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [ 200, 200 ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.message }}\n\nCode:\n{{ $json.body.code }}",
+        "options": {
+          "systemMessage": "You are a STRICT Code Review Mentor. Detect errors. Max 10 lines of code examples. NEVER give the full answer."
+        }
+      },
+      "id": "agent-code",
+      "name": "Code Mentor",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.1,
+      "position": [ 500, 200 ]
+    },
+
+    {
+      "parameters": { "httpMethod": "POST", "path": "progress-event", "responseMode": "lastNode" },
+      "id": "webhook-progress",
+      "name": "Progress Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [ 200, 400 ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "User {{ $json.body.userId }} completed {{ $json.body.topicSlug }}.",
+        "options": {
+          "systemMessage": "You are a Motivation Agent. Generate a 1-sentence insight congratulating them."
+        }
+      },
+      "id": "agent-progress",
+      "name": "Motivation Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.1,
+      "position": [ 500, 400 ]
+    },
+
+    {
+      "parameters": { "rule": { "interval": [ { "field": "cronExpression", "expression": "0 20 * * *" } ] } },
+      "id": "trigger-cron",
+      "name": "8 PM Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [ -100, 600 ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Generate a motivating reminder message to get inactive users back to studying.",
+        "options": {
+          "systemMessage": "You are a motivating coach."
+        }
+      },
+      "id": "agent-reminder",
+      "name": "Reminder Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.1,
+      "position": [ 200, 600 ]
+    }
+  ],
+  "connections": {
+    "Main Webhook": { "main": [ [ { "node": "General Mentor", "type": "main", "index": 0 } ] ] },
+    "IDE Webhook": { "main": [ [ { "node": "Code Mentor", "type": "main", "index": 0 } ] ] },
+    "Progress Webhook": { "main": [ [ { "node": "Motivation Agent", "type": "main", "index": 0 } ] ] },
+    "8 PM Schedule": { "main": [ [ { "node": "Reminder Agent", "type": "main", "index": 0 } ] ] },
+    
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [ { "node": "General Mentor", "type": "ai_languageModel", "index": 0 } ],
+        [ { "node": "Code Mentor", "type": "ai_languageModel", "index": 0 } ],
+        [ { "node": "Motivation Agent", "type": "ai_languageModel", "index": 0 } ],
+        [ { "node": "Reminder Agent", "type": "ai_languageModel", "index": 0 } ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [ { "node": "General Mentor", "type": "ai_memory", "index": 0 } ],
+        [ { "node": "Code Mentor", "type": "ai_memory", "index": 0 } ]
+      ]
+    }
+  }
+}

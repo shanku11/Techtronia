@@ -156,7 +156,7 @@ const Courses = () => {
           <div className="space-y-2">
             <h1 className="text-4xl font-bold flex items-center gap-3">
               <BookOpen className="h-10 w-10 text-primary" />
-              Technotronia Courses
+              Techtronia Courses
             </h1>
             <p className="text-xl text-muted-foreground">
               Master computer science through AI-powered interactive learning

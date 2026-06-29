@@ -1,0 +1,62 @@
+# Advanced Agentic Mentor Architecture Plan
+
+The goal is to upgrade the AI Mentor from a basic chatbot to a powerful, state-tracking Agentic Workflow system using n8n and our backend database. This involves setting up specialized workflows for Roadmap Generation, Code Mentorship, Progress Tracking, and Scheduled Motivations.
+
+## Open Questions
+
+> [!WARNING]
+> Please review and answer the following before we begin:
+
+1. **Database Strategy:** The plan suggests Supabase/Postgres, but the current Techtronia project uses **MongoDB**. Do you want to stick with MongoDB (highly recommended for speed since it's already set up), or migrate to Supabase?
+2. **Notifications:** For Workflow 5 (8 PM Reminders), do you want to start with in-app notifications, or do you have a specific Email/WhatsApp service (like Twilio, SendGrid) ready to integrate into n8n?
+3. **N8n Execution:** We will need to build the JSON workflow blueprints for these 6 workflows. I can generate the `.json` files for you to import into your n8n workspace. Are you comfortable importing them and configuring the database credentials inside n8n?
+
+## Proposed Architecture & Phases
+
+Since this is a massive platform expansion, we will break the execution down into logical phases.
+
+### Phase 1: Enhanced Database Models (MongoDB)
+We will expand the Node.js/MongoDB backend to track all the data the AI needs.
+
+#### [MODIFY] `server/models/User.js`
+- Add fields for `streak`, `last_active`, `weak_topics`, `mentor_notes`, and a `progress` sub-document.
+
+#### [NEW] `server/models/Roadmap.js`
+- A new model to store AI-generated daily tasks and weekly milestones for each user.
+
+### Phase 2: Main Agent & Intent Detection (Workflow 1 & 6)
+We will rebuild the primary `n8n-ai-mentor-workflow.json`.
+
+#### [MODIFY] `n8n-ai-mentor-workflow.json`
+- We will add an **Intent Classifier** node right after the Webhook.
+- Based on intent, it will route to: Doubt Clarification, Roadmap Generator, or Code Help.
+- Add an HTTP Request node to fetch the user's `User.js` profile and learning history from the Node.js backend *before* answering.
+
+### Phase 3: The Code Mentor Flow (Workflow 3)
+We already have an AI Code IDE page in the platform.
+
+#### [MODIFY] `src/pages/AICodeIDE.tsx` (or similar)
+- Re-route the code submission logic to hit a specific n8n webhook (`/webhook/code-mentor`).
+
+#### [NEW] `n8n-code-mentor-workflow.json`
+- Build the n8n blueprint that analyzes code syntax and ONLY returns hints (max 10-15 lines of code examples).
+
+### Phase 4: Roadmap & Progress Workflows (Workflows 2 & 4)
+
+#### [NEW] `n8n-roadmap-workflow.json`
+- Input: Goal, Level, Time. Output: Structured JSON roadmap.
+
+#### [NEW] `n8n-progress-workflow.json`
+- An n8n webhook triggered by the Node backend every time a user finishes a quiz/lesson.
+- Updates the `progress` field and returns an AI insight for the user's dashboard.
+
+### Phase 5: Reminder System (Workflow 5)
+
+#### [NEW] `n8n-cron-reminder-workflow.json`
+- A schedule trigger node set to run daily at 8 PM.
+- Pulls inactive users from MongoDB, generates an encouraging message, and pushes it out.
+
+## Verification Plan
+1. **Database:** Verify new schemas deploy successfully via Mongoose.
+2. **Importing:** You will import the newly generated `n8n` `.json` workflow files into your n8n dashboard.
+3. **Integration Testing:** We will test sending a message to see if the new Intent Router triggers correctly.

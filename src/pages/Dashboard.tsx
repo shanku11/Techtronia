@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Trophy, Star, BookOpen, Code, Zap, Crown, Medal, Award, LogOut, Loader2, RefreshCw } from "lucide-react";
+import { Brain, Trophy, Star, BookOpen, Code, Zap, Crown, Medal, Award, LogOut, Loader2, RefreshCw, Bot } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchWithoutAuth, fetchWithAuth } from "@/lib/api";
 import { io } from "socket.io-client";
@@ -155,7 +155,7 @@ const Dashboard = () => {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <Brain className="h-12 w-12 mx-auto mb-4 text-primary" />
-          <h1 className="text-2xl font-bold mb-4">Welcome to Technotronia</h1>
+          <h1 className="text-2xl font-bold mb-4">Welcome to Techtronia</h1>
           <p className="text-muted-foreground mb-6">Please sign in to access your dashboard</p>
           <div className="space-x-4">
             <Link to="/login">
@@ -189,9 +189,15 @@ const Dashboard = () => {
             <div className="p-2 rounded-lg tech-gradient">
               <Brain className="h-6 w-6 text-white" />
             </div>
-            <span className="text-xl font-bold">Technotronia</span>
+            <span className="text-xl font-bold">Techtronia</span>
           </Link>
           <nav className="flex items-center gap-4">
+            <Link to="/mentor">
+              <Button variant="ghost" className="text-primary font-medium gap-2">
+                <Bot className="h-4 w-4" />
+                AI Mentor
+              </Button>
+            </Link>
             <Link to="/courses">
               <Button variant="ghost">Courses</Button>
             </Link>
@@ -207,7 +213,7 @@ const Dashboard = () => {
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-3">
               <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Welcome to Technotronia, {profile?.full_name || "Learner"}!
+                Welcome to Techtronia, {profile?.full_name || "Learner"}!
               </span>
             </h1>
             <p className="text-muted-foreground mt-1">Continue your AI-powered learning journey</p>

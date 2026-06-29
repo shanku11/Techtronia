@@ -33,6 +33,7 @@ const progressRoutes = require('./routes/progress');
 const coursesRoutes = require('./routes/courses');
 const leaderboardRoutes = require('./routes/leaderboard');
 const enrollmentsRoutes = require('./routes/enrollments');
+const usersRoutes = require('./routes/users');
 const aiRoutes = require('./routes/ai');
 const adminRoutes = require('./routes/admin');
 
@@ -41,6 +42,7 @@ app.use('/api/progress', progressRoutes);
 app.use('/api/courses', coursesRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/enrollments', enrollmentsRoutes);
+app.use('/api/users', usersRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/admin', adminRoutes);
 
@@ -49,10 +51,11 @@ const dbOptions = {
   maxPoolSize: 10,
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
+  family: 4
 };
 
 const primaryURI = process.env.MONGODB_URI;
-const localFallbackURI = 'mongodb://127.0.0.1:27017/technotronia';
+const localFallbackURI = 'mongodb://127.0.0.1:27017/techtronia';
 
 if (primaryURI) {
   mongoose.connect(primaryURI, dbOptions)

@@ -9,7 +9,6 @@ import {
   Trophy, Zap, Star, Target, Sparkles 
 } from "lucide-react";
 import { useLearningProgress } from "@/contexts/LearningProgressContext";
-import AIMentorAssistant from "./AIMentorAssistant";
 
 const DSALearningHub = () => {
   const { courseId } = useParams();
@@ -282,9 +281,6 @@ const DSALearningHub = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* AI Mentor Floating Assistant */}
-      <AIMentorAssistant />
     </div>
   );
 };

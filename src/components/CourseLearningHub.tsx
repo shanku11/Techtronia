@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { useLearningProgress } from "@/contexts/LearningProgressContext";
 import { fetchWithoutAuth } from "@/lib/api";
-import AIMentorAssistant from "./AIMentorAssistant";
 
 interface Topic {
   id: string;
@@ -339,9 +338,6 @@ const CourseLearningHub = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* AI Mentor Floating Assistant */}
-      <AIMentorAssistant />
     </div>
   );
 };

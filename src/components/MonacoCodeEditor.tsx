@@ -55,7 +55,7 @@ const MonacoCodeEditor = ({
     });
 
     // Define custom dark theme matching the app
-    monaco.editor.defineTheme("technotronia-dark", {
+    monaco.editor.defineTheme("techtronia-dark", {
       base: "vs-dark",
       inherit: true,
       rules: [
@@ -87,7 +87,7 @@ const MonacoCodeEditor = ({
       },
     });
 
-    monaco.editor.setTheme("technotronia-dark");
+    monaco.editor.setTheme("techtronia-dark");
 
     if (onMount) {
       onMount(editor, monaco);

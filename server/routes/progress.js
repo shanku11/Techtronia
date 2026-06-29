@@ -39,6 +39,15 @@ router.post('/sync', authMiddleware, async (req, res) => {
     if (req.io) {
       req.io.emit('leaderboard_update');
       
+      // Ping n8n Progress Tracking Agent (Fire and forget)
+      if (completed) {
+        fetch('https://shanku.app.n8n.cloud/webhook/progress-event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: req.user.userId, topicSlug, stage, score })
+        }).catch(err => console.log('n8n webhook error:', err.message));
+      }
+      
       // Get user details to send real-time notification
       const user = await User.findById(req.user.userId).select('fullName username');
       if (user && completed) {

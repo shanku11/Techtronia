@@ -8,8 +8,8 @@ async function callGemini(contents, systemInstruction) {
     throw new Error('GEMINI_API_KEY is not configured');
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-  
+  let url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+
   const payload = {
     contents: contents
   };
@@ -20,7 +20,7 @@ async function callGemini(contents, systemInstruction) {
     };
   }
 
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -29,15 +29,43 @@ async function callGemini(contents, systemInstruction) {
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini API Error: ${response.status} - ${errorText}`);
+    let errorText = await response.text();
+
+    // If the error mentions ListModels, it likely means the model isn't available for this API key. Fall back to gemini-pro
+    if (errorText.includes("ListModels")) {
+      console.log('Model gemini-1.5-flash-latest not found, falling back to gemini-pro');
+      url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+
+      // gemini-pro does not support systemInstruction, so we append it to the first message
+      if (systemInstruction) {
+        delete payload.systemInstruction;
+        if (payload.contents.length > 0) {
+          payload.contents[0].parts.unshift({ text: `System Instruction: ${systemInstruction}\n\n` });
+        }
+      }
+
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        errorText = await response.text();
+        throw new Error(`Gemini API Error (fallback): ${response.status} - ${errorText}`);
+      }
+    } else {
+      throw new Error(`Gemini API Error: ${response.status} - ${errorText}`);
+    }
   }
 
   const data = await response.json();
   if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]) {
     return data.candidates[0].content.parts[0].text;
   }
-  
+
   throw new Error('Unexpected response format from Gemini');
 }
 
@@ -50,30 +78,36 @@ router.post('/mentor', async (req, res) => {
       return res.status(400).json({ message: 'Messages array is required' });
     }
 
-    // If API Key is configured, use real Google Gemini AI
-    if (process.env.GEMINI_API_KEY) {
-      try {
-        // Convert chat history format from frontend (role: user/assistant) to Gemini format (role: user/model)
-        const geminiMessages = messages.map(msg => ({
-          role: msg.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: msg.content }]
-        }));
+    // Extract the latest message to send to n8n
+    const userMessageText = messages[messages.length - 1].content;
+    const userId = req.user ? req.user.userId : req.body.userId || 'default_user';
 
-        const sysInstruction = `You are a warm, expert Computer Science and Data Structures & Algorithms (DSA) Mentor on the Technotronia interactive learning platform. 
-Your goal is to guide the student step-by-step. 
-CRITICAL RULE: DO NOT simply give the student the direct solution or write the entire code for them. 
-Instead, guide them using real-world analogies (e.g. comparing arrays to a row of post office boxes, stacks to a pile of cafeteria trays), ask leading questions, and highlight hints.
-Use clean markdown to format your replies (bolding key terms, lists, simple code snippets where appropriate).
-Context: ${context || 'DSA interactive learning session'}`;
+    // Call n8n Webhook for AI Mentor
+    try {
+      const n8nResponse = await fetch('https://shanku.app.n8n.cloud/webhook/mentor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          message: userMessageText, 
+          context: context,
+          userId: userId,
+          messages: messages // still send full array just in case n8n needs it
+        })
+      });
 
-        const geminiResponse = await callGemini(geminiMessages, sysInstruction);
-        return res.json({ response: geminiResponse });
-      } catch (geminiErr) {
-        console.error('Gemini API call failed, falling back:', geminiErr.message);
+      if (n8nResponse.ok) {
+        const data = await n8nResponse.json();
+        const aiResponseText = data.response || data.output || data.text || data.message || (typeof data === 'string' ? data : JSON.stringify(data));
+        return res.json({ response: aiResponseText });
+      } else {
+        const errText = await n8nResponse.text();
+        console.error('n8n webhook failed with status:', n8nResponse.status, errText);
       }
+    } catch (n8nErr) {
+      console.error('Failed to connect to n8n webhook:', n8nErr.message);
     }
 
-    // Fallback Simulated AI Mentor when no API key is present
+    // Fallback Simulated AI Mentor when n8n is unreachable
     const userMessage = messages[messages.length - 1].content.toLowerCase();
     let topic = "Algorithms";
     let analogy = "a roadmap for solving a puzzle step-by-step";
@@ -108,7 +142,7 @@ ${specifics}
 **Let's think together:**
 If we wanted to reverse a string of characters using a Data Structure, how might you use what we just discussed to achieve that? Let me know your thoughts!
 
-*(💡 **System Admin Tip:** To unlock the full power of real-time conversational Google Gemini AI, add a \`GEMINI_API_KEY\` in your \`server/.env\` file!)*`;
+*(💡 **System Admin Tip:** We tried connecting to your n8n workflow but it failed. Ensure the webhook is active!)*`;
 
     res.json({ response: mentorResponse });
   } catch (err) {
@@ -128,7 +162,7 @@ router.post('/evaluate-code', async (req, res) => {
     // If API Key is configured, use real Google Gemini AI for evaluation
     if (process.env.GEMINI_API_KEY) {
       try {
-        const prompt = `You are an automated code evaluation agent on the Technotronia platform.
+        const prompt = `You are an automated code evaluation agent on the Techtronia platform.
 Evaluate this user code submission.
 Challenge: ${challenge || 'Coding Challenge'}
 Language: ${language}
@@ -154,7 +188,7 @@ You MUST respond with a single valid JSON object. Do not include markdown code b
 }`;
 
         const geminiResponseText = await callGemini([{ role: 'user', parts: [{ text: prompt }] }], 'You are a code assessment bot. Output raw JSON only.');
-        
+
         // Sanitize response to make sure we parse JSON successfully
         let jsonStr = geminiResponseText.trim();
         if (jsonStr.startsWith('```json')) {
@@ -177,7 +211,7 @@ You MUST respond with a single valid JSON object. Do not include markdown code b
 
     // Fallback Simulated Code Evaluation when no API key is present
     const score = Math.floor(Math.random() * 15) + 85; // 85 to 99
-    
+
     const evaluation = `### Code Analysis
 Your **${language}** solution for **${challenge || 'Interactive Challenge'}** was parsed successfully!
 

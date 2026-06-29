@@ -17,7 +17,6 @@ import TopicExplanation from "./TopicExplanation";
 import TopicPractice from "./TopicPractice";
 import TopicTest from "./TopicTest";
 import RealWorldUseCases from "./RealWorldUseCases";
-import AIMentorAssistant from "./AIMentorAssistant";
 
 interface Topic {
   id: string;
@@ -383,9 +382,6 @@ const TopicLearningFlow = () => {
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* AI Mentor */}
-      <AIMentorAssistant />
     </div>
   );
 };

@@ -125,38 +125,35 @@ const AICodeIDE = () => {
     setOutput("🤖 AI is analyzing your code...\n\n⚙️ Compiling...\n✓ Syntax check passed\n⚙️ Running AI evaluation...");
     
     try {
-      const data = await fetchWithAuth('/ai/evaluate-code', {
+      const res = await fetch('/api/n8n/webhook/code-mentor', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code,
           language: selectedLanguage,
-          challenge: selectedChallenge.title
+          challenge: selectedChallenge.title,
+          message: "Please review my code and provide hints."
         })
       });
 
-      if (!data.evaluation) {
-        throw new Error("Invalid response");
-      }
-
-      const { evaluation, score } = data;
+      if (!res.ok) throw new Error("Failed to connect to n8n code mentor");
+      const data = await res.json();
       
-      const xpGained = Math.round(selectedChallenge.points * (score / 100));
+      const aiResponse = data.output || data.text || data.message || data.response || "No feedback provided.";
       
-      const formattedOutput = `✅ AI Evaluation Complete!
+      const xpGained = Math.round(selectedChallenge.points * 0.85); // standard completion xp
       
-📊 AI Code Analysis:
+      const formattedOutput = `✅ AI Code Mentor Analysis:
 ━━━━━━━━━━━━━━━━━━━━━━━
-${evaluation}
+${aiResponse}
 
-🏆 Performance Score: ${score}/100
 🎯 XP Gained: +${xpGained}
-
 💡 Tip: Review the feedback above to improve your code!`;
 
       setOutput(formattedOutput);
       setIsRunning(false);
       
-      toast.success(`🎉 Evaluation complete! Score: ${score}/100 | +${xpGained} XP`);
+      toast.success(`🎉 Evaluation complete! | +${xpGained} XP`);
     } catch (error) {
       console.error('Error running code:', error);
       setOutput("❌ An error occurred during evaluation.");
