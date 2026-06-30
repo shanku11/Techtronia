@@ -73,8 +73,8 @@ const Dashboard = () => {
   useEffect(() => {
     if (!user) return;
 
-    // Connect to Socket.io server on the backend port (5001)
-    const socket = io("http://localhost:5001");
+    // Connect to Socket.io server on the backend port
+    const socket = io(import.meta.env.VITE_API_URL || "https://techtronia-backend.onrender.com");
 
     socket.on("connect", () => {
       console.log("🔌 Connected to real-time server!");

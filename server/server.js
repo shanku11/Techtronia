@@ -10,7 +10,14 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*' }
+  cors: {
+    origin: [
+      "https://techtronia.onrender.com",
+      "http://localhost:5173",
+      "http://localhost:3000"
+    ],
+    credentials: true
+  }
 });
 
 // Security middlewares
@@ -19,7 +26,14 @@ app.use(helmet({
 }));
 app.use(mongoSanitize());
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    "https://techtronia.onrender.com",
+    "http://localhost:5173",
+    "http://localhost:3000"
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 // Expose Socket.io instance on request object for routers to access
